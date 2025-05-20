@@ -1,0 +1,22 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/1/Not.hdl
+/**
+ * Not gate:
+ * if (in) out = 0, else out = 1
+ */
+CHIP Not {
+    IN in;
+    OUT out;
+
+    PARTS:
+    Nand(a= in, b= in, out= out);
+    /*
+    Definizione -> Nand(x,y) = Not(x and y)
+    Legge di De Morgan -> Not(x and y) = Not x or Not y 
+    Utilizzo della stessa variabile -> Not(x and x) = Not x or Not x
+    Legge dell'idempotenza-> Not x or Not x = Not x
+    Risultato -> Nand(x,x) = Not x 
+    */
+}
