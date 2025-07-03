@@ -1,5 +1,5 @@
 from pathlib import Path
-from Parser import CommandType, SegmentType, OperatorType
+from VMenums import *
 
 class CodeWriter:
 
