@@ -31,10 +31,6 @@ class CodeWriter:
             assembly += CodeWriter.__PUSH_STORE_ASM_INST
 
         elif instruction_type == CommandType.C_POP:
-            if segment == SegmentType.S_CONSTANT:
-                #raise error for pop constant x instruction
-                print("Invalid segment for pop instruction, using constant")
-                exit()
             assembly = f"// pop {segment.value} {index}\n"
             assembly += self.__popFetchString(segment, index)
 

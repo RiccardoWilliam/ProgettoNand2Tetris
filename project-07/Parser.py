@@ -1,8 +1,11 @@
 from VMexceptions import *
 from pathlib import Path
 from VMenums import *
+from re import fullmatch
 
 class Parser:
+
+    label_pattern = r'^(?!\d)[\w.:]+$'
 
     def __init__(self, path: Path):
 
@@ -20,10 +23,13 @@ class Parser:
             if len(self.__instructions) == 0:
                 raise VMFileError(message="Input file doesn't contain instructions", path=path)
 
-        
-        self.__current_line = 0
+        # initialize instance variables
+        self.__current_line = -1
     
     def advance(self):
+
+        #advance
+        self.__current_line +=1
 
         #check end of instructions
         if not self.hasMoreLines():
@@ -47,9 +53,6 @@ class Parser:
         #check instruction arguments 
         self.__check_instruction_args(instruction_fragments)
 
-        #advance
-        self.__current_line +=1
-
     #checks the instruction type
     def __check_instruction_type(self, instruction_type: str):
         if instruction_type in (operator.value for operator in OperatorType):
@@ -63,7 +66,8 @@ class Parser:
             "function": CommandType.C_FUNCTION,
             "return": CommandType.C_RETURN,
             "label": CommandType.C_LABEL,
-            "if-goto": CommandType.C_GOTO
+            "if-goto": CommandType.C_IF,
+            "goto": CommandType.C_GOTO
         }
 
         if instruction_type in type_map:
@@ -76,53 +80,108 @@ class Parser:
     def __check_instruction_args(self, instruction: list[str]):
         
         arg_count = len(instruction)
+        command = self.__instruction_type
 
         #checks for arithmetic compliance
-        if self.__instruction_type == CommandType.C_ARITHMETIC:
+        if command == CommandType.C_ARITHMETIC:
             if arg_count != 1:
                 raise VMInstructionError(message="Invalid instruction argument count", instruction=self.__current_instruction, line_number=self.__current_line)
             self.__arg1 = instruction[0]
             return
         
         #checks for push/pop compliance
-        if self.__instruction_type in (CommandType.C_PUSH, CommandType.C_POP):
+        if command in (CommandType.C_PUSH, CommandType.C_POP):
 
             if arg_count != 3:
                 raise VMInstructionError(message="Invalid instruction argument count", instruction=self.__current_instruction, line_number=self.__current_line)            
 
-            arg = instruction[1]
-            index = int(instruction[2])
+            segment = instruction[1]
+            index = instruction[2]
 
-            if arg not in [segment.value for segment in SegmentType]:
+            if segment not in [segment.value for segment in SegmentType]:
                 raise VMInstructionError(message="Invalid instruction segment", instruction=self.__current_instruction, line_number=self.__current_line)
             
             #illegal "pop constant x" instruction
-            if self.__instruction_type == CommandType.C_POP and arg == SegmentType.S_CONSTANT.value:
+            if command == CommandType.C_POP and segment == SegmentType.S_CONSTANT.value:
                 raise VMSegmentError(message="Invalid segment for pop instruction, using constant", instruction=self.__current_instruction, line_number=self.__current_line)
 
-            if not arg.isdecimal():
-                raise VMInstructionError(message="Invalid instruction index", instruction=self.__current_instruction, line_number=self.__current_line)                
+            if not index.isdecimal():
+                raise VMInstructionError(message="Invalid instruction index, is not decimal", instruction=self.__current_instruction, line_number=self.__current_line)                
         
-            if not (0 <= index <= 32767):
-                raise VMInstructionError(message="Invalid index value", instruction=self.__current_instruction, line_number=self.__current_line)
+            if not (0 <= int(index) <= 32767):
+                raise VMInstructionError(message="Invalid index value, must be between 0 and 32767", instruction=self.__current_instruction, line_number=self.__current_line)
             
-            self.__arg1 = instruction[1]
-            self.__arg2 = instruction[2]
+            self.__arg1 = segment
+            self.__arg2 = index
             return
 
-    def hasMoreLines(self) -> bool:
-        return self.__current_line < len(self.__instructions)
+        if command == CommandType.C_RETURN:
+            if arg_count != 1:
+                raise VMInstructionError(message="Invalid instruction argument count", instruction=self.__current_instruction, line_number=self.__current_line)            
+            self.__arg1 = None
+            self.__arg2 = None
+            return
+        
+        if command in (CommandType.C_LABEL, CommandType.C_GOTO, CommandType.C_IF):
+            if arg_count != 2:
+                raise VMInstructionError(message="Invalid instruction argument count", instruction=self.__current_instruction, line_number=self.__current_line)
 
-    def commandType(self) -> CommandType | None:
+            label = instruction[1]
+            
+            if not fullmatch(Parser.label_pattern,label):
+                raise VMInstructionError(message="Invalid instruction label format", instruction=self.__current_instruction, line_number=self.__current_line)
+            self.__arg1 = label
+            self.__arg2 = None
+            return
+
+        if command in (CommandType.C_FUNCTION, CommandType.C_CALL):
+            if arg_count != 3:
+                raise VMInstructionError(message="Invalid instruction argument count", instruction=self.__current_instruction, line_number=self.__current_line)
+
+            label = instruction[1]
+            nVars = instruction[2]   #nVars is considered the same as nArgs
+
+            if not fullmatch(Parser.label_pattern, label):
+                raise VMInstructionError(message="Invalid instruction label format", instruction=self.__current_instruction, line_number=self.__current_line)
+
+            if not nVars.isdecimal():
+                raise VMInstructionError(message="Invalid instruction index", instruction=self.__current_instruction, line_number=self.__current_line)                
+
+            self.__arg1 = label
+            self.__arg2 = nVars
+            return 
+
+    def hasMoreLines(self) -> bool:
+        return self.__current_line < len(self.__instructions) - 1
+
+    def commandType(self) -> CommandType:
+        if self.__current_line == -1:
+            raise VMFileError(message="No instruction parsed yet, call Parser.advance() first")
+        
         return self.__instruction_type
     
-    def arg1(self) -> str | None:
+    def arg1(self) -> str:
+        if self.__current_line == -1:
+            raise VMFileError(message="No instruction parsed yet, call Parser.advance() first")
+
+        if self.__arg1 is None:
+            raise VMInstructionError(message="Can't call 1st argument, is None", instruction=self.__current_instruction, line_number=self.__current_line)
+        
         return self.__arg1
     
-    def arg2(self) -> str | None:
+    def arg2(self) -> str:
+        if self.__current_line == -1:
+            raise VMFileError(message="No instruction parsed yet, call Parser.advance() first")
+
+        if self.__arg2 is None:
+            raise VMInstructionError(message="Can't call 2nd argument, is None", instruction=self.__current_instruction, line_number=self.__current_line)
+        
         return self.__arg2
     
-    def currentInstruction(self) -> str | None:
+    def currentInstruction(self) -> str:
+        if self.__current_line == -1:
+            raise VMFileError(message="No instruction parsed yet, call Parser.advance() first")
+        
         return self.__current_instruction
 
     

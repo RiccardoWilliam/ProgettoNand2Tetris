@@ -4,11 +4,11 @@ class CommandType(Enum):
     C_ARITHMETIC = "C_ARITHMETIC" #mono
     C_PUSH = "C_PUSH" #triple
     C_POP = "C_POP" #triple
+    C_RETURN = "C_RETURN" #mono
     C_LABEL = "C_LABEL" #double
     C_GOTO = "C_GOTO" #double
     C_IF = "C_IF" #double
     C_FUNCTION = "C_FUNCTION" #triple
-    C_RETURN = "C_RETURN" #mono
     C_CALL = "C_CALL" #triple
 
 class SegmentType(Enum):
