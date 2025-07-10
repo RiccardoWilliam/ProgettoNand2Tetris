@@ -2,13 +2,23 @@ from pathlib import Path
 from VMenums import *
 from VMexceptions import *
 
+#TODO   manage multiple source .vm files,
+#       write init sequence
+
 class CodeWriter:
 
-    ASM_POP_UPDATE_SP = "\n".join([
+    __ASM_POP_UPDATE_SP = "\n".join([
         "@SP",
         "AM=M-1",
         "D=M"
     ])
+
+    __ASM_PUSH_UPDATE_SP = "\n".join([
+        "@SP", 
+        "A=M", 
+        "M=D", 
+        "@SP", 
+        "M=M+1"])
 
     #hashmap for VM segments to assembly segments correspondance
     __VM_TO_ASM_SEGMENT = {
@@ -21,7 +31,12 @@ class CodeWriter:
     def __init__(self, path: Path):
         self.__output_path = path
         self.__filename = path.stem
-        self.__label_count = 0
+        self.__current_function = path.stem
+        self.__label_map = {
+            "frame": 0,  
+            "call": 0, 
+            "return": 0, 
+            "math": 0}
 
         # Clear old file content
         open(self.__output_path, "w").close()
@@ -75,7 +90,7 @@ class CodeWriter:
             assembly += "\n"
 
             #common push assembly sequence for updating and then incrementing the stack pointer
-            assembly += "\n".join(["@SP", "A=M", "M=D", "@SP", "M=M+1"])
+            assembly += CodeWriter.__ASM_PUSH_UPDATE_SP
 
         elif instruction_type == CommandType.C_POP:
             
@@ -85,7 +100,7 @@ class CodeWriter:
             match segment:
                 case SegmentType.S_TEMP:
                     assembly += "\n".join([
-                        CodeWriter.ASM_POP_UPDATE_SP,
+                        CodeWriter.__ASM_POP_UPDATE_SP,
                         f"@R{5 + index}",
                         "M=D"
                     ])
@@ -93,14 +108,14 @@ class CodeWriter:
                 case SegmentType.S_POINTER:
                     segment_name = "THIS" if index == 0 else "THAT"
                     assembly += "\n".join([
-                        CodeWriter.ASM_POP_UPDATE_SP,
+                        CodeWriter.__ASM_POP_UPDATE_SP,
                         f"@{segment_name}",
                         "M=D",
                     ])
 
                 case SegmentType.S_STATIC:
                     assembly += "\n".join([
-                        CodeWriter.ASM_POP_UPDATE_SP,
+                        CodeWriter.__ASM_POP_UPDATE_SP,
                         f"@{self.__filename}.{index}",
                         "M=D",
                     ])
@@ -114,14 +129,14 @@ class CodeWriter:
                         "D=D+M",
                         "@R13",
                         "M=D",
-                        CodeWriter.ASM_POP_UPDATE_SP,
+                        CodeWriter.__ASM_POP_UPDATE_SP,
                         "@R13",
                         "A=M",
                         "M=D"
                     ])
 
-        # adds a newline to separate instructions
-        assembly += "\n"
+            # adds a newline to separate instructions
+            assembly += "\n"
 
         # writes the translated instruction
         self.__saveInstruction(assembly)        
@@ -131,7 +146,7 @@ class CodeWriter:
         assembly = f"// {operator.value}\n"
 
         ASM_MATH_UPDATE_SP = "\n".join([
-            CodeWriter.ASM_POP_UPDATE_SP,
+            CodeWriter.__ASM_POP_UPDATE_SP,
             "A=A-1"
         ])
 
@@ -173,21 +188,183 @@ class CodeWriter:
                     ASM_MATH_UPDATE_SP,
                     "D=M-D",
                     "M=0",
-                    f"@END_{operator.value.upper()}_{self.__filename}.{self.__label_count}",
+                    f"@END_{operator.value.upper()}_{self.__filename}.{self.__label_map["math"]}",
                     "D;JNE",
                     "@SP",
                     "A=M-1",
                     "M=-1",
-                    f"(END_{operator.value.upper()}_{self.__filename}.{self.__label_count})"
+                    f"(END_{operator.value.upper()}_{self.__filename}.{self.__label_map["math"]})"
                 ])
 
-                self.__label_count += 1
+                self.__label_map["math"] += 1
 
         # adds newline to separate instructions
         assembly += "\n"
 
         self.__saveInstruction(assembly)       
 
+    def writeLabel(self, label: str):
+
+        label = f"{self.__filename}.{self.__current_function}${label}"
+
+        assembly = f"// label {label}\n"
+        assembly += f"({label})"
+        assembly += "\n"
+
+        self.__saveInstruction(assembly)
+
+    def writeGoto(self, label: str):
+
+        label = f"{self.__filename}.{self.__current_function}${label}"        
+
+        assembly= f"// goto {label}\n"
+        assembly += "\n".join([
+            f"@{label}",
+            "0;JMP"
+        ])
+        assembly += "\n"
+
+        self.__saveInstruction(assembly)
+
+    def writeIf(self, label: str):
+
+        label = f"{self.__filename}.{self.__current_function}${label}"
+
+        ASM_IF_UPDATE_SP = CodeWriter.__ASM_POP_UPDATE_SP
+        assembly = f"// if-goto {label}\n"
+        assembly += "\n".join([
+            ASM_IF_UPDATE_SP,
+            f"@{label}",
+            "D;JNE"
+        ])
+        assembly += "\n"
+
+        self.__saveInstruction(assembly)
+
+    def writeFunction(self, functionName: str, nVars: int):
+
+        # checks whether the current function context has changed 
+        if functionName != self.__current_function:
+            self.__current_function = functionName
+
+        ASM_FUNCTION_PUSH_CONST = "\n".join([
+            "@0",
+            "D=A",
+            CodeWriter.__ASM_PUSH_UPDATE_SP
+        ])
+        assembly = f"// function {functionName} {nVars}\n"
+        assembly += "\n".join([
+            f"({functionName})",
+            "\n".join([ASM_FUNCTION_PUSH_CONST for i in range(nVars)])
+        ])
+        assembly += "\n"
+
+        self.__saveInstruction(assembly)
+    
+    def writeCall(self, functionName: str, nArgs: int):
+        
+        function_return_label = f"{functionName}$ret.{self.__label_map["call"]}"
+        self.__label_map["call"] += 1
+
+        args= [
+            function_return_label, "LCL", "ARG", "THIS", "THAT"
+        ]
+
+        assembly = f"// call {functionName} {nArgs}"
+        for arg in args:
+            assembly += "\n".join([
+                f"@{arg}",
+                "D=M",
+                CodeWriter.__ASM_PUSH_UPDATE_SP
+            ])
+            assembly += "\n"
+
+        assembly += "\n".join([
+            "@5",
+            "D=A",
+            f"@{nArgs}",
+            "D=D-A",
+            "@SP",
+            "D=M-D",
+            "@ARG",
+            "M=D",
+            "@SP",
+            "D=M",
+            "@LCL",
+            "M=D",
+            f"@{functionName}",
+            "0;JMP",
+            f"({function_return_label})"
+        ])
+        assembly += "\n"
+
+        self.__saveInstruction(assembly)
+    
+    def writeReturn(self):
+
+        frame_label = f"@FRAME_{self.__filename}.{self.__current_function}_{self.__label_map["frame"]}"
+        return_label = f"@RETADDR_{self.__filename}.{self.__current_function}_{self.__label_map["return"]}"
+
+        # pop argument 0
+        assembly = "\n".join([
+            "// return",
+            "@LCL",
+            "D=M",
+            frame_label,
+            "M=D",
+            "@5",
+            "A=D-A",
+            "D=M",
+            return_label,
+            "M=D",
+            f"@0",
+            "D=A",
+            f"@ARG",
+            "D=D+M",
+            "@R13",
+            "M=D",
+            CodeWriter.__ASM_POP_UPDATE_SP,
+            "@R13",
+            "A=M",
+            "M=D",
+        ])
+
+        assembly += "\n"
+
+        # SP = RAM[ARG] + 1
+        assembly += "\n".join([
+            "@ARG",
+            "D=M",
+            "@SP",
+            "M=D+1",
+        ])
+        
+        # THIS/THAT/ARG/LCL = RAM[--FRAME]
+        args = ["THAT", "THIS", "ARG", "LCL"]
+        for arg in args:
+            assembly+="\n".join([
+                frame_label,
+                "AM=M-1",
+                "D=M",
+                f"@{arg}",
+                "M=D",
+            ])
+            assembly += "\n"
+
+        # GOTO RAM[RETADDR]
+        assembly += "\n".join([
+            return_label,
+            "A=M",
+            "0;JMP"
+        ])
+
+        assembly += "\n"
+
+        self.__label_map["frame"] += 1
+        self.__label_map["return"] += 1
+
+        self.__saveInstruction(assembly)
+    
     #writes common end loop for Hack Machine assembly program
     def writeEndLoop(self):
         endLoop =  "\n".join([
