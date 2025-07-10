@@ -1,7 +1,9 @@
 import argparse
 from pathlib import Path
-from Parser import Parser, CommandType
+from Parser import Parser
 from CodeWriter import CodeWriter
+from VMexceptions import *
+from VMenums import *
 
 class VMtranslator:
     def __init__(self, input_file, output_dir, debug: bool = False):
@@ -9,16 +11,13 @@ class VMtranslator:
         output_dir = Path(output_dir)
 
         if input_file.suffix != ".vm":
-            print("Input file isn't a .vm file")
-            exit()
+            raise VMFileError("Input file isn't a .vm file")
 
         if not input_file.exists() or not input_file.is_file():
-            print("Invalid input file")
-            exit()
-
+            raise VMFileError("Invalid input file")
+        
         if not output_dir.exists() or not output_dir.is_dir():
-            print("Invalid output folder")
-            exit()
+            raise VMFileError("Invalid output folder")
 
         output_path = output_dir / input_file.with_suffix('.asm').name
         self.__parser = Parser(input_file)
@@ -34,25 +33,36 @@ class VMtranslator:
     def writeEndLoop(self):
         self.__code_writer.writeEndLoop()
 
-    @property
-    def currentInstruction(self):
-        return self.__parser.currentInstruction
+    def __currentInstruction(self):
+        return self.__parser.currentInstruction()
+    
+    def __arg1(self):
+        return self.__parser.arg1()
+    
+    def __arg2(self):
+        return self.__parser.arg2()
+
 
     def writeInstruction(self):
-        instruction_type = self.__parser.commandType
-        instruction_arg1 = self.__parser.arg1
-        instruction_arg2 = self.__parser.arg2
+        command = CommandType(self.__parser.commandType())
 
-        match instruction_type:
+        match command:
             case CommandType.C_PUSH | CommandType.C_POP:
-                self.__code_writer.writePushPop(instruction_type, instruction_arg1, instruction_arg2)
+
+                segment = SegmentType(self.__arg1())
+                index = int(self.__arg2())
+                self.__code_writer.writePushPop(command, segment, index)
+
             case CommandType.C_ARITHMETIC:
-                self.__code_writer.writeArithmetic(self.__parser.arg0)
+                
+                operator = OperatorType(self.__arg1())
+                self.__code_writer.writeArithmetic(operator)
+
             case _:
-                print(f"// Istruzione non riconosciuta: {instruction_type}")
+                raise VMFileError("Invalid instruction")
 
         if self.__debug:
-            print(f"// {self.currentInstruction}")
+            print(f"// {self.__currentInstruction()}")
 
 if __name__ == "__main__":
     argParser = argparse.ArgumentParser(description="VM to Hack Assembly Translator")
@@ -67,6 +77,6 @@ if __name__ == "__main__":
     while translator.hasMoreLines():
         translator.next()
         translator.writeInstruction()
-
     translator.writeEndLoop()
+
     print("Translation completed")
