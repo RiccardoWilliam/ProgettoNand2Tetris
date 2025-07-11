@@ -20,14 +20,6 @@ class CodeWriter:
         "@SP", 
         "M=M+1"])
 
-    #hashmap for VM segments to assembly segments correspondance
-    __VM_TO_ASM_SEGMENT = {
-        SegmentType.S_THIS: "THIS",
-        SegmentType.S_THAT: "THAT",
-        SegmentType.S_LOCAL: "LCL",
-        SegmentType.S_ARGUMENT: "ARG"
-    }
-
     def __init__(self, path: Path):
         self.__output_path = path
         self.__filename = path.stem
@@ -42,6 +34,14 @@ class CodeWriter:
         open(self.__output_path, "w").close()
 
     def writePushPop(self, instruction_type: CommandType, segment: SegmentType, index: int):
+
+        #hashmap for VM segments to assembly segments correspondance
+        VM_TO_ASM_SEGMENT = {
+            SegmentType.S_THIS: "THIS",
+            SegmentType.S_THAT: "THAT",
+            SegmentType.S_LOCAL: "LCL",
+            SegmentType.S_ARGUMENT: "ARG"
+        }
 
         assembly = ""
 
@@ -77,7 +77,7 @@ class CodeWriter:
                     ])
 
                 case SegmentType.S_LOCAL | SegmentType.S_ARGUMENT | SegmentType.S_THIS | SegmentType.S_THAT:
-                    asm_segment = CodeWriter.__VM_TO_ASM_SEGMENT[segment]
+                    asm_segment = VM_TO_ASM_SEGMENT[segment]
                     assembly += "\n".join([
                         f"@{index}",
                         "D=A",
@@ -121,7 +121,7 @@ class CodeWriter:
                     ])
 
                 case SegmentType.S_LOCAL | SegmentType.S_ARGUMENT | SegmentType.S_THIS | SegmentType.S_THAT:
-                    asm_segment = CodeWriter.__VM_TO_ASM_SEGMENT[segment]
+                    asm_segment = VM_TO_ASM_SEGMENT[segment]
                     assembly += "\n".join([
                         f"@{index}",
                         "D=A",
@@ -135,8 +135,8 @@ class CodeWriter:
                         "M=D"
                     ])
 
-            # adds a newline to separate instructions
-            assembly += "\n"
+        # adds a newline to separate instructions
+        assembly += "\n"
 
         # writes the translated instruction
         self.__saveInstruction(assembly)        
@@ -184,12 +184,19 @@ class CodeWriter:
                     "M=!M"
                 ])
             case OperatorType.O_EQ | OperatorType.O_LT | OperatorType.O_GT:
+
+                OPERATOR_JUMP_MATCH = { 
+                    "eq": "D;JNE",
+                    "lt": "D;JGE",
+                    "gt": "D;JLE"
+                }
+
                 assembly += "\n".join([
                     ASM_MATH_UPDATE_SP,
                     "D=M-D",
                     "M=0",
                     f"@END_{operator.value.upper()}_{self.__filename}.{self.__label_map["math"]}",
-                    "D;JNE",
+                    OPERATOR_JUMP_MATCH[operator.value],
                     "@SP",
                     "A=M-1",
                     "M=-1",
@@ -255,7 +262,7 @@ class CodeWriter:
         assembly = f"// function {functionName} {nVars}\n"
         assembly += "\n".join([
             f"({functionName})",
-            "\n".join([ASM_FUNCTION_PUSH_CONST for i in range(nVars)])
+            "\n".join([ASM_FUNCTION_PUSH_CONST for _ in range(nVars)])
         ])
         assembly += "\n"
 
@@ -270,7 +277,8 @@ class CodeWriter:
             function_return_label, "LCL", "ARG", "THIS", "THAT"
         ]
 
-        assembly = f"// call {functionName} {nArgs}"
+        assembly = f"// call {functionName} {nArgs}\n"
+        # push each argument onto the stack
         for arg in args:
             assembly += "\n".join([
                 f"@{arg}",
@@ -278,7 +286,7 @@ class CodeWriter:
                 CodeWriter.__ASM_PUSH_UPDATE_SP
             ])
             assembly += "\n"
-
+        # move ARG to the first passed argument's position
         assembly += "\n".join([
             "@5",
             "D=A",
@@ -302,8 +310,8 @@ class CodeWriter:
     
     def writeReturn(self):
 
-        frame_label = f"@FRAME_{self.__filename}.{self.__current_function}_{self.__label_map["frame"]}"
-        return_label = f"@RETADDR_{self.__filename}.{self.__current_function}_{self.__label_map["return"]}"
+        frame_label = f"@frame_{self.__filename}.{self.__current_function}_{self.__label_map["frame"]}"
+        return_label = f"@retAddr_{self.__filename}.{self.__current_function}_{self.__label_map["return"]}"
 
         # pop argument 0
         assembly = "\n".join([
@@ -317,9 +325,9 @@ class CodeWriter:
             "D=M",
             return_label,
             "M=D",
-            f"@0",
+            "@0",
             "D=A",
-            f"@ARG",
+            "@ARG",
             "D=D+M",
             "@R13",
             "M=D",
@@ -328,7 +336,6 @@ class CodeWriter:
             "A=M",
             "M=D",
         ])
-
         assembly += "\n"
 
         # SP = RAM[ARG] + 1
@@ -338,6 +345,7 @@ class CodeWriter:
             "@SP",
             "M=D+1",
         ])
+        assembly += "\n"
         
         # THIS/THAT/ARG/LCL = RAM[--FRAME]
         args = ["THAT", "THIS", "ARG", "LCL"]
@@ -357,7 +365,6 @@ class CodeWriter:
             "A=M",
             "0;JMP"
         ])
-
         assembly += "\n"
 
         self.__label_map["frame"] += 1

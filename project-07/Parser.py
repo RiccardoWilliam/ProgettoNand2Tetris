@@ -28,12 +28,12 @@ class Parser:
     
     def advance(self):
 
-        #advance
-        self.__current_line +=1
-
         #check end of instructions
         if not self.hasMoreLines():
             raise VMFileError("Can't advance, no more instructions available")
+        
+        #advance
+        self.__current_line +=1
 
         #reset args
         self.__arg1 = None
@@ -82,7 +82,7 @@ class Parser:
         arg_count = len(instruction)
         command = self.__instruction_type
 
-        if command == CommandType.C_ARITHMETIC:
+        if command == CommandType.C_ARITHMETIC.value:
             if arg_count != 1:
                 raise VMInstructionError(message="Invalid instruction argument count", instruction=self.__current_instruction, line_number=self.__current_line)
             self.__arg1 = instruction[0]
@@ -113,12 +113,12 @@ class Parser:
                 raise VMInstructionError(message="Invalid index value, must be between 0 and 32767", instruction=self.__current_instruction, line_number=self.__current_line)
             
             #illegal "push/pop temp x" instruction where x not in [0..7]
-            if segment == SegmentType.S_TEMP.value and index not in [i for i in range(8)]:
-                raise VMInstructionError(message="Invalid index for TEMP segment: range not in between [0..7]", instruction=self.__current_instruction, line_number=self.__current_line)
+            if segment == SegmentType.S_TEMP.value and int(index) not in [i for i in range(8)]:
+                raise VMInstructionError(message="Invalid index for TEMP segment, range not in between [0..7]", instruction=self.__current_instruction, line_number=self.__current_line)
             
             #illegal "push/pop pointer x" instruction where x not in [0.7]
-            if segment == SegmentType.S_POINTER.value and index not in (0,1):
-                raise VMInstructionError(message="Invalid index for POINTER segment: range not in between [0,1]", instruction=self.__current_instruction, line_number=self.__current_line)
+            if segment == SegmentType.S_POINTER.value and int(index) not in (0,1):
+                raise VMInstructionError(message="Invalid index for POINTER segment, range not in between [0,1]", instruction=self.__current_instruction, line_number=self.__current_line)
 
             self.__arg1 = segment
             self.__arg2 = index

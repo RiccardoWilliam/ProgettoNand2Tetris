@@ -14,6 +14,7 @@ class VMtranslator:
             raise VMFileError("Input file isn't a .vm file")
 
         if not input_file.exists() or not input_file.is_file():
+            print(input_file.absolute())
             raise VMFileError("Invalid input file")
         
         if not output_dir.exists() or not output_dir.is_dir():
