@@ -1,7 +1,2 @@
-# Ignora tutte le cartelle __pycache__ in tutta la repo
 **/__pycache__/
-
-# (opzionale) Ignora anche i file compilati Python
-*.pyc
-*.pyo
-*.pyd
+**/.vscode/
