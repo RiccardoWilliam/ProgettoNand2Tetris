@@ -7,21 +7,28 @@ class Parser:
 
     label_pattern = r'^(?!\d)[\w.:]+$'
 
-    def __init__(self, path: Path):
+    def __init__(self, source: Path):
 
-        with open(path, encoding = "utf-8") as file:
-            ##removes all comments and empty lines
+        with open(source, encoding="utf-8") as file:
+            ## removes all comments and empty lines
             self.__instructions: list[str] = []
             for line in file:
-                #remove trailing and leading whitespace
+                # Remove trailing and leading whitespace
                 stripped_line = line.strip()
-                #if line is empty or is a comment, ignore it
+                
+                # Skip if the line is empty or a full-line comment
                 if not stripped_line or stripped_line.startswith("//"):
-                    continue 
-                self.__instructions.append(stripped_line)
+                    continue
+
+                # Remove inline comments
+                code_part = stripped_line.split("//", 1)[0].strip()
+                
+                # Skip if removing the inline comment results in an empty line
+                if code_part:
+                    self.__instructions.append(code_part)
             
             if len(self.__instructions) == 0:
-                raise VMFileError(message="Input file doesn't contain instructions", path=path)
+                raise VMFileError(message="Input file doesn't contain instructions", path=source)
 
         # initialize instance variables
         self.__current_line = -1
@@ -124,14 +131,14 @@ class Parser:
             self.__arg2 = index
             return
 
-        if command == CommandType.C_RETURN:
+        if command == CommandType.C_RETURN.value:
             if arg_count != 1:
                 raise VMInstructionError(message="Invalid instruction argument count", instruction=self.__current_instruction, line_number=self.__current_line)            
             self.__arg1 = None
             self.__arg2 = None
             return
         
-        if command in (CommandType.C_LABEL, CommandType.C_GOTO, CommandType.C_IF):
+        if command in (CommandType.C_LABEL.value, CommandType.C_GOTO.value, CommandType.C_IF.value):
             if arg_count != 2:
                 raise VMInstructionError(message="Invalid instruction argument count", instruction=self.__current_instruction, line_number=self.__current_line)
 
@@ -143,7 +150,7 @@ class Parser:
             self.__arg2 = None
             return
 
-        if command in (CommandType.C_FUNCTION, CommandType.C_CALL):
+        if command in (CommandType.C_FUNCTION.value, CommandType.C_CALL.value):
             if arg_count != 3:
                 raise VMInstructionError(message="Invalid instruction argument count", instruction=self.__current_instruction, line_number=self.__current_line)
 

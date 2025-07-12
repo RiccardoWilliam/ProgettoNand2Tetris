@@ -5,24 +5,21 @@ from CodeWriter import CodeWriter
 from VMexceptions import *
 from VMenums import *
 
+# add multi-file translation
 class VMtranslator:
-    def __init__(self, input_file, output_dir, debug: bool = False):
-        input_file = Path(input_file)
+    def __init__(self, source, output_dir, debug: bool = False):
+        source = Path(source)
         output_dir = Path(output_dir)
 
-        if input_file.suffix != ".vm":
-            raise VMFileError("Input file isn't a .vm file")
+        if source.suffix != ".vm" and not source.is_dir():
+            raise VMFileError("Input file isn't a .vm file nor a folder")
 
-        if not input_file.exists() or not input_file.is_file():
-            print(input_file.absolute())
-            raise VMFileError("Invalid input file")
-        
-        if not output_dir.exists() or not output_dir.is_dir():
-            raise VMFileError("Invalid output folder")
+        # makes an output .asm file's name the same as the source's
+        output_path = output_dir / source.with_suffix('.asm').name
 
-        output_path = output_dir / input_file.with_suffix('.asm').name
-        self.__parser = Parser(input_file)
+        self.__parser = Parser(source)
         self.__code_writer = CodeWriter(output_path)
+
         self.__debug = debug
 
     def next(self):
@@ -33,6 +30,9 @@ class VMtranslator:
 
     def writeEndLoop(self):
         self.__code_writer.writeEndLoop()
+    
+    def writeBootstrapCode(self):
+        self.__code_writer.writeBootstrapCode()
 
     def __currentInstruction(self):
         return self.__parser.currentInstruction()
@@ -42,7 +42,6 @@ class VMtranslator:
     
     def __arg2(self):
         return self.__parser.arg2()
-
 
     def writeInstruction(self):
         command = CommandType(self.__parser.commandType())
@@ -59,8 +58,38 @@ class VMtranslator:
                 operator = OperatorType(self.__arg1())
                 self.__code_writer.writeArithmetic(operator)
 
-            case _:
-                raise VMFileError("Invalid instruction")
+            case CommandType.C_LABEL:
+
+                label = self.__arg1()
+                self.__code_writer.writeLabel(label)
+            
+            case CommandType.C_GOTO:
+
+                label = self.__arg1()
+                self.__code_writer.writeGoto(label)
+            
+            case CommandType.C_IF:
+
+                label = self.__arg1()
+                self.__code_writer.writeIf(label)
+            
+            case CommandType.C_FUNCTION:
+
+                functionName = self.__arg1()
+                nVars = int(self.__arg2())
+
+                self.__code_writer.writeFunction(functionName, nVars)
+
+            case CommandType.C_CALL:
+
+                functionName = self.__arg1()
+                nArgs = int(self.__arg2())
+
+                self.__code_writer.writeCall(functionName, nArgs)
+            
+            case CommandType.C_RETURN:
+
+                self.__code_writer.writeReturn()
 
         if self.__debug:
             print(f"// {self.__currentInstruction()}")
@@ -75,6 +104,7 @@ if __name__ == "__main__":
 
     translator = VMtranslator(args.input_file, args.output_dir, args.debug)
 
+    # translator.writeBootstrapCode()
     while translator.hasMoreLines():
         translator.next()
         translator.writeInstruction()

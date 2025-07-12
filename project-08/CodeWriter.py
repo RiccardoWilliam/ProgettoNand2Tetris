@@ -2,9 +2,6 @@ from pathlib import Path
 from VMenums import *
 from VMexceptions import *
 
-#TODO   manage multiple source .vm files,
-#       write init sequence
-
 class CodeWriter:
 
     __ASM_POP_UPDATE_SP = "\n".join([
@@ -20,10 +17,10 @@ class CodeWriter:
         "@SP", 
         "M=M+1"])
 
-    def __init__(self, path: Path):
-        self.__output_path = path
-        self.__filename = path.stem
-        self.__current_function = path.stem
+    def __init__(self, output_path: Path):
+        self.__output_path = output_path
+        self.__filename = output_path.stem
+        self.__current_function = output_path.stem
         self.__label_map = {
             "frame": 0,  
             "call": 0, 
@@ -372,7 +369,25 @@ class CodeWriter:
 
         self.__saveInstruction(assembly)
     
-    #writes common end loop for Hack Machine assembly program
+    def writeBootstrapCode(self):
+        assembly = "// bootstrap code\n"
+        assembly += "\n".join([
+            "@256",
+            "D=A",
+            "@SP",
+            "M=D"
+        ])
+        assembly += "\n"
+
+        self.__saveInstruction(assembly)
+        self.writeCall("Sys.init", 0)
+
+    # changes the current filename being translated in asm code
+    def setFileName(self, filename):
+        self.__filename = filename
+        self.__current_function = filename
+    
+    # writes common end loop for Hack Machine assembly program
     def writeEndLoop(self):
         endLoop =  "\n".join([
                     "(END)",
