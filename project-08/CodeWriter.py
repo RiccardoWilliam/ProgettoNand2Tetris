@@ -192,12 +192,12 @@ class CodeWriter:
                     ASM_MATH_UPDATE_SP,
                     "D=M-D",
                     "M=0",
-                    f"@END_{operator.value.upper()}_{self.__filename}.{self.__label_map["math"]}",
+                    f"@END_{operator.value.upper()}_{self.__current_function}.{self.__label_map["math"]}",
                     OPERATOR_JUMP_MATCH[operator.value],
                     "@SP",
                     "A=M-1",
                     "M=-1",
-                    f"(END_{operator.value.upper()}_{self.__filename}.{self.__label_map["math"]})"
+                    f"(END_{operator.value.upper()}_{self.__current_function}.{self.__label_map["math"]})"
                 ])
 
                 self.__label_map["math"] += 1
@@ -209,7 +209,7 @@ class CodeWriter:
 
     def writeLabel(self, label: str):
 
-        label = f"{self.__filename}.{self.__current_function}${label}"
+        label = f"{self.__current_function}${label}"
 
         assembly = f"// label {label}\n"
         assembly += f"({label})"
@@ -219,7 +219,7 @@ class CodeWriter:
 
     def writeGoto(self, label: str):
 
-        label = f"{self.__filename}.{self.__current_function}${label}"        
+        label = f"{self.__current_function}${label}"        
 
         assembly= f"// goto {label}\n"
         assembly += "\n".join([
@@ -232,7 +232,7 @@ class CodeWriter:
 
     def writeIf(self, label: str):
 
-        label = f"{self.__filename}.{self.__current_function}${label}"
+        label = f"{self.__current_function}${label}"
 
         ASM_IF_UPDATE_SP = CodeWriter.__ASM_POP_UPDATE_SP
         assembly = f"// if-goto {label}\n"
@@ -261,7 +261,6 @@ class CodeWriter:
             f"({functionName})",
             "\n".join([ASM_FUNCTION_PUSH_CONST for _ in range(nVars)])
         ])
-        assembly += "\n"
 
         self.__saveInstruction(assembly)
     
@@ -277,9 +276,10 @@ class CodeWriter:
         assembly = f"// call {functionName} {nArgs}\n"
         # push each argument onto the stack
         for arg in args:
+            LOAD_D = "D=A" if arg == function_return_label else "D=M"
             assembly += "\n".join([
                 f"@{arg}",
-                "D=M",
+                LOAD_D,
                 CodeWriter.__ASM_PUSH_UPDATE_SP
             ])
             assembly += "\n"
@@ -288,7 +288,7 @@ class CodeWriter:
             "@5",
             "D=A",
             f"@{nArgs}",
-            "D=D-A",
+            "D=D+A",
             "@SP",
             "D=M-D",
             "@ARG",
@@ -307,8 +307,8 @@ class CodeWriter:
     
     def writeReturn(self):
 
-        frame_label = f"@frame_{self.__filename}.{self.__current_function}_{self.__label_map["frame"]}"
-        return_label = f"@retAddr_{self.__filename}.{self.__current_function}_{self.__label_map["return"]}"
+        frame_label = f"@FRAME_{self.__current_function}_{self.__label_map["frame"]}"
+        return_label = f"@RETADDR_{self.__current_function}_{self.__label_map["return"]}"
 
         # pop argument 0
         assembly = "\n".join([
@@ -322,10 +322,8 @@ class CodeWriter:
             "D=M",
             return_label,
             "M=D",
-            "@0",
-            "D=A",
             "@ARG",
-            "D=D+M",
+            "D=M",
             "@R13",
             "M=D",
             CodeWriter.__ASM_POP_UPDATE_SP,
@@ -394,7 +392,8 @@ class CodeWriter:
                     "@END", 
                     "0;JMP"
                     ])
-    
+        endLoop += "\n"
+
         self.__saveInstruction(assembly=endLoop)
             
     #appends the assembly instruction at the end of the file

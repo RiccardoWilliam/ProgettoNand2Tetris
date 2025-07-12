@@ -48,7 +48,7 @@ class Parser:
 
         #fetch instruction
         self.__current_instruction = self.__instructions[self.__current_line]
-        instruction_fragments = self.__current_instruction.lower().split()
+        instruction_fragments = self.__current_instruction.split()
 
         #check instruction length
         if len(instruction_fragments) > 3:
@@ -62,7 +62,7 @@ class Parser:
 
     #checks the instruction type
     def __check_instruction_type(self, instruction_type: str):
-        if instruction_type in (operator.value for operator in OperatorType):
+        if instruction_type.lower() in (operator.value for operator in OperatorType):
             self.__instruction_type = CommandType.C_ARITHMETIC.value
             return
 
@@ -77,7 +77,7 @@ class Parser:
             "goto": CommandType.C_GOTO
         }
 
-        if instruction_type in type_map:
+        if instruction_type.lower() in type_map:
             self.__instruction_type = type_map[instruction_type].value
             return
 

@@ -5,109 +5,86 @@ from CodeWriter import CodeWriter
 from VMexceptions import *
 from VMenums import *
 
-# add multi-file translation
 class VMtranslator:
     def __init__(self, source, output_dir, debug: bool = False):
-        source = Path(source)
+        self.__source = Path(source)
         output_dir = Path(output_dir)
-
-        if source.suffix != ".vm" and not source.is_dir():
-            raise VMFileError("Input file isn't a .vm file nor a folder")
-
-        # makes an output .asm file's name the same as the source's
-        output_path = output_dir / source.with_suffix('.asm').name
-
-        self.__parser = Parser(source)
-        self.__code_writer = CodeWriter(output_path)
-
         self.__debug = debug
 
-    def next(self):
-        self.__parser.advance()
+        if self.__source.suffix != ".vm" and not self.__source.is_dir():
+            raise VMFileError("Input file isn't a .vm file nor a folder")
 
-    def hasMoreLines(self):
-        return self.__parser.hasMoreLines()
-
-    def writeEndLoop(self):
-        self.__code_writer.writeEndLoop()
+        # Nome del file .asm finale
+        self.__output_path = output_dir / self.__source.with_suffix('.asm').name
+        self.__code_writer = CodeWriter(self.__output_path)
     
-    def writeBootstrapCode(self):
-        self.__code_writer.writeBootstrapCode()
+    def translate(self):
+        if self.__source.is_file():
+            self.__translate_file(self.__source)
+            self.__code_writer.writeEndLoop()
+        else:
+            self.__code_writer.writeBootstrapCode()
+            vm_files = self.__source.glob("*.vm")
+            for vm_file in vm_files:
+                self.__translate_file(vm_file)
+        
 
-    def __currentInstruction(self):
-        return self.__parser.currentInstruction()
-    
-    def __arg1(self):
-        return self.__parser.arg1()
-    
-    def __arg2(self):
-        return self.__parser.arg2()
+    def __translate_file(self, filepath: Path):
+        parser = Parser(filepath)
+        self.__code_writer.setFileName(filepath.stem) 
 
-    def writeInstruction(self):
-        command = CommandType(self.__parser.commandType())
+        while parser.hasMoreLines():
+            parser.advance()
+            command = CommandType(parser.commandType())
 
-        match command:
-            case CommandType.C_PUSH | CommandType.C_POP:
+            if self.__debug:
+                print(f"// {parser.currentInstruction()}")
 
-                segment = SegmentType(self.__arg1())
-                index = int(self.__arg2())
-                self.__code_writer.writePushPop(command, segment, index)
+            match command:
+                case CommandType.C_PUSH | CommandType.C_POP:
+                    segment = SegmentType(parser.arg1())
+                    index = int(parser.arg2())
+                    self.__code_writer.writePushPop(command, segment, index)
 
-            case CommandType.C_ARITHMETIC:
-                
-                operator = OperatorType(self.__arg1())
-                self.__code_writer.writeArithmetic(operator)
+                case CommandType.C_ARITHMETIC:
+                    operator = OperatorType(parser.arg1())
+                    self.__code_writer.writeArithmetic(operator)
 
-            case CommandType.C_LABEL:
+                case CommandType.C_LABEL:
+                    label = parser.arg1()
+                    self.__code_writer.writeLabel(label)
 
-                label = self.__arg1()
-                self.__code_writer.writeLabel(label)
-            
-            case CommandType.C_GOTO:
+                case CommandType.C_GOTO:
+                    label = parser.arg1()
+                    self.__code_writer.writeGoto(label)
 
-                label = self.__arg1()
-                self.__code_writer.writeGoto(label)
-            
-            case CommandType.C_IF:
+                case CommandType.C_IF:
+                    label = parser.arg1()
+                    self.__code_writer.writeIf(label)
 
-                label = self.__arg1()
-                self.__code_writer.writeIf(label)
-            
-            case CommandType.C_FUNCTION:
+                case CommandType.C_FUNCTION:
+                    functionName = parser.arg1()
+                    nVars = int(parser.arg2())
+                    self.__code_writer.writeFunction(functionName, nVars)
 
-                functionName = self.__arg1()
-                nVars = int(self.__arg2())
+                case CommandType.C_CALL:
+                    functionName = parser.arg1()
+                    nArgs = int(parser.arg2())
+                    self.__code_writer.writeCall(functionName, nArgs)
 
-                self.__code_writer.writeFunction(functionName, nVars)
+                case CommandType.C_RETURN:
+                    self.__code_writer.writeReturn()
 
-            case CommandType.C_CALL:
-
-                functionName = self.__arg1()
-                nArgs = int(self.__arg2())
-
-                self.__code_writer.writeCall(functionName, nArgs)
-            
-            case CommandType.C_RETURN:
-
-                self.__code_writer.writeReturn()
-
-        if self.__debug:
-            print(f"// {self.__currentInstruction()}")
 
 if __name__ == "__main__":
     argParser = argparse.ArgumentParser(description="VM to Hack Assembly Translator")
-    argParser.add_argument("input_file", help="Path to .vm input file")
+    argParser.add_argument("input_file", help="Path to .vm file or folder")
     argParser.add_argument("output_dir", help="Output directory for .asm file")
     argParser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
     args = argParser.parse_args()
 
     translator = VMtranslator(args.input_file, args.output_dir, args.debug)
-
-    # translator.writeBootstrapCode()
-    while translator.hasMoreLines():
-        translator.next()
-        translator.writeInstruction()
-    translator.writeEndLoop()
+    translator.translate()
 
     print("Translation completed")
