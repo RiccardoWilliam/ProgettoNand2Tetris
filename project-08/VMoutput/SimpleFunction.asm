@@ -1,5 +1,6 @@
-// function simplefunction.test 2
-(simplefunction.test)
+// function SimpleFunction.test 2
+(SimpleFunction.test)
+// push constant 0
 @0
 D=A
 @SP
@@ -7,6 +8,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push constant 0
 @0
 D=A
 @SP
@@ -81,19 +83,20 @@ D=M
 A=A-1
 M=M-D
 // return
+// RAM[FRAME] = LCL
 @LCL
 D=M
-@frame_SimpleFunction.simplefunction.test_0
+@FRAME_SimpleFunction.test_0
 M=D
+// RETADDR = LCL - 5
 @5
 A=D-A
 D=M
-@retAddr_SimpleFunction.simplefunction.test_0
+@RETADDR_SimpleFunction.test_0
 M=D
-@0
-D=A
+// pop argument 0
 @ARG
-D=D+M
+D=M
 @R13
 M=D
 @SP
@@ -102,31 +105,37 @@ D=M
 @R13
 A=M
 M=D
+// SP = ARG + 1
 @ARG
 D=M
 @SP
 M=D+1
-@frame_SimpleFunction.simplefunction.test_0
+// THAT = RAM[--FRAME]
+@FRAME_SimpleFunction.test_0
 AM=M-1
 D=M
 @THAT
 M=D
-@frame_SimpleFunction.simplefunction.test_0
+// THIS = RAM[--FRAME]
+@FRAME_SimpleFunction.test_0
 AM=M-1
 D=M
 @THIS
 M=D
-@frame_SimpleFunction.simplefunction.test_0
+// ARG = RAM[--FRAME]
+@FRAME_SimpleFunction.test_0
 AM=M-1
 D=M
 @ARG
 M=D
-@frame_SimpleFunction.simplefunction.test_0
+// LCL = RAM[--FRAME]
+@FRAME_SimpleFunction.test_0
 AM=M-1
 D=M
 @LCL
 M=D
-@retAddr_SimpleFunction.simplefunction.test_0
+// goto RAM[RETADDR]
+@RETADDR_SimpleFunction.test_0
 A=M
 0;JMP
 (END)

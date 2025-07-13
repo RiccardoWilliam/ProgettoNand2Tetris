@@ -19,8 +19,8 @@ D=M
 @R13
 A=M
 M=D
-// label BasicLoop.BasicLoop$loop
-(BasicLoop.BasicLoop$loop)
+// label BasicLoop$LOOP
+(BasicLoop$LOOP)
 // push argument 0
 @0
 D=A
@@ -111,11 +111,11 @@ A=M
 M=D
 @SP
 M=M+1
-// if-goto BasicLoop.BasicLoop$loop
+// if-goto BasicLoop$LOOP
 @SP
 AM=M-1
 D=M
-@BasicLoop.BasicLoop$loop
+@BasicLoop$LOOP
 D;JNE
 // push local 0
 @0

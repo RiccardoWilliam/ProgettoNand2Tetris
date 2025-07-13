@@ -4,6 +4,7 @@ D=A
 @SP
 M=D
 // call Sys.init 0
+// push Sys.init$ret.0
 @Sys.init$ret.0
 D=A
 @SP
@@ -11,6 +12,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push LCL
 @LCL
 D=M
 @SP
@@ -18,6 +20,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push ARG
 @ARG
 D=M
 @SP
@@ -25,6 +28,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push THIS
 @THIS
 D=M
 @SP
@@ -32,6 +36,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push THAT
 @THAT
 D=M
 @SP
@@ -39,6 +44,7 @@ A=M
 M=D
 @SP
 M=M+1
+// ARG = RAM[SP] - 5 - nArgs
 @5
 D=A
 @0
@@ -47,10 +53,12 @@ D=D+A
 D=M-D
 @ARG
 M=D
+// LCL = SP
 @SP
 D=M
 @LCL
 M=D
+// goto Sys.init
 @Sys.init
 0;JMP
 (Sys.init$ret.0)
@@ -111,15 +119,18 @@ M=D
 @SP
 M=M+1
 // return
+// RAM[FRAME] = LCL
 @LCL
 D=M
 @FRAME_Main.fibonacci_0
 M=D
+// RETADDR = LCL - 5
 @5
 A=D-A
 D=M
 @RETADDR_Main.fibonacci_0
 M=D
+// pop argument 0
 @ARG
 D=M
 @R13
@@ -130,30 +141,36 @@ D=M
 @R13
 A=M
 M=D
+// SP = ARG + 1
 @ARG
 D=M
 @SP
 M=D+1
+// THAT = RAM[--FRAME]
 @FRAME_Main.fibonacci_0
 AM=M-1
 D=M
 @THAT
 M=D
+// THIS = RAM[--FRAME]
 @FRAME_Main.fibonacci_0
 AM=M-1
 D=M
 @THIS
 M=D
+// ARG = RAM[--FRAME]
 @FRAME_Main.fibonacci_0
 AM=M-1
 D=M
 @ARG
 M=D
+// LCL = RAM[--FRAME]
 @FRAME_Main.fibonacci_0
 AM=M-1
 D=M
 @LCL
 M=D
+// goto RAM[RETADDR]
 @RETADDR_Main.fibonacci_0
 A=M
 0;JMP
@@ -185,6 +202,7 @@ D=M
 A=A-1
 M=M-D
 // call Main.fibonacci 1
+// push Main.fibonacci$ret.1
 @Main.fibonacci$ret.1
 D=A
 @SP
@@ -192,6 +210,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push LCL
 @LCL
 D=M
 @SP
@@ -199,6 +218,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push ARG
 @ARG
 D=M
 @SP
@@ -206,6 +226,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push THIS
 @THIS
 D=M
 @SP
@@ -213,6 +234,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push THAT
 @THAT
 D=M
 @SP
@@ -220,6 +242,7 @@ A=M
 M=D
 @SP
 M=M+1
+// ARG = RAM[SP] - 5 - nArgs
 @5
 D=A
 @1
@@ -228,10 +251,12 @@ D=D+A
 D=M-D
 @ARG
 M=D
+// LCL = SP
 @SP
 D=M
 @LCL
 M=D
+// goto Main.fibonacci
 @Main.fibonacci
 0;JMP
 (Main.fibonacci$ret.1)
@@ -261,6 +286,7 @@ D=M
 A=A-1
 M=M-D
 // call Main.fibonacci 1
+// push Main.fibonacci$ret.2
 @Main.fibonacci$ret.2
 D=A
 @SP
@@ -268,6 +294,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push LCL
 @LCL
 D=M
 @SP
@@ -275,6 +302,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push ARG
 @ARG
 D=M
 @SP
@@ -282,6 +310,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push THIS
 @THIS
 D=M
 @SP
@@ -289,6 +318,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push THAT
 @THAT
 D=M
 @SP
@@ -296,6 +326,7 @@ A=M
 M=D
 @SP
 M=M+1
+// ARG = RAM[SP] - 5 - nArgs
 @5
 D=A
 @1
@@ -304,10 +335,12 @@ D=D+A
 D=M-D
 @ARG
 M=D
+// LCL = SP
 @SP
 D=M
 @LCL
 M=D
+// goto Main.fibonacci
 @Main.fibonacci
 0;JMP
 (Main.fibonacci$ret.2)
@@ -318,15 +351,18 @@ D=M
 A=A-1
 M=D+M
 // return
+// RAM[FRAME] = LCL
 @LCL
 D=M
 @FRAME_Main.fibonacci_1
 M=D
+// RETADDR = LCL - 5
 @5
 A=D-A
 D=M
 @RETADDR_Main.fibonacci_1
 M=D
+// pop argument 0
 @ARG
 D=M
 @R13
@@ -337,30 +373,36 @@ D=M
 @R13
 A=M
 M=D
+// SP = ARG + 1
 @ARG
 D=M
 @SP
 M=D+1
+// THAT = RAM[--FRAME]
 @FRAME_Main.fibonacci_1
 AM=M-1
 D=M
 @THAT
 M=D
+// THIS = RAM[--FRAME]
 @FRAME_Main.fibonacci_1
 AM=M-1
 D=M
 @THIS
 M=D
+// ARG = RAM[--FRAME]
 @FRAME_Main.fibonacci_1
 AM=M-1
 D=M
 @ARG
 M=D
+// LCL = RAM[--FRAME]
 @FRAME_Main.fibonacci_1
 AM=M-1
 D=M
 @LCL
 M=D
+// goto RAM[RETADDR]
 @RETADDR_Main.fibonacci_1
 A=M
 0;JMP
@@ -375,6 +417,7 @@ M=D
 @SP
 M=M+1
 // call Main.fibonacci 1
+// push Main.fibonacci$ret.3
 @Main.fibonacci$ret.3
 D=A
 @SP
@@ -382,6 +425,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push LCL
 @LCL
 D=M
 @SP
@@ -389,6 +433,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push ARG
 @ARG
 D=M
 @SP
@@ -396,6 +441,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push THIS
 @THIS
 D=M
 @SP
@@ -403,6 +449,7 @@ A=M
 M=D
 @SP
 M=M+1
+// push THAT
 @THAT
 D=M
 @SP
@@ -410,6 +457,7 @@ A=M
 M=D
 @SP
 M=M+1
+// ARG = RAM[SP] - 5 - nArgs
 @5
 D=A
 @1
@@ -418,10 +466,12 @@ D=D+A
 D=M-D
 @ARG
 M=D
+// LCL = SP
 @SP
 D=M
 @LCL
 M=D
+// goto Main.fibonacci
 @Main.fibonacci
 0;JMP
 (Main.fibonacci$ret.3)

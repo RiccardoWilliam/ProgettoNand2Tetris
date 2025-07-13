@@ -95,8 +95,8 @@ D=M
 @R13
 A=M
 M=D
-// label FibonacciSeries.FibonacciSeries$loop
-(FibonacciSeries.FibonacciSeries$loop)
+// label FibonacciSeries$LOOP
+(FibonacciSeries$LOOP)
 // push argument 0
 @0
 D=A
@@ -108,17 +108,17 @@ A=M
 M=D
 @SP
 M=M+1
-// if-goto FibonacciSeries.FibonacciSeries$compute_element
+// if-goto FibonacciSeries$COMPUTE_ELEMENT
 @SP
 AM=M-1
 D=M
-@FibonacciSeries.FibonacciSeries$compute_element
+@FibonacciSeries$COMPUTE_ELEMENT
 D;JNE
-// goto FibonacciSeries.FibonacciSeries$end
-@FibonacciSeries.FibonacciSeries$end
+// goto FibonacciSeries$END
+@FibonacciSeries$END
 0;JMP
-// label FibonacciSeries.FibonacciSeries$compute_element
-(FibonacciSeries.FibonacciSeries$compute_element)
+// label FibonacciSeries$COMPUTE_ELEMENT
+(FibonacciSeries$COMPUTE_ELEMENT)
 // push that 0
 @0
 D=A
@@ -226,11 +226,11 @@ D=M
 @R13
 A=M
 M=D
-// goto FibonacciSeries.FibonacciSeries$loop
-@FibonacciSeries.FibonacciSeries$loop
+// goto FibonacciSeries$LOOP
+@FibonacciSeries$LOOP
 0;JMP
-// label FibonacciSeries.FibonacciSeries$end
-(FibonacciSeries.FibonacciSeries$end)
+// label FibonacciSeries$END
+(FibonacciSeries$END)
 (END)
 @END
 0;JMP

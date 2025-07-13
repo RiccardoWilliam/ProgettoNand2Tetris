@@ -252,15 +252,19 @@ class CodeWriter:
             self.__current_function = functionName
 
         ASM_FUNCTION_PUSH_CONST = "\n".join([
+            "// push constant 0",
             "@0",
             "D=A",
             CodeWriter.__ASM_PUSH_UPDATE_SP
         ])
+
         assembly = f"// function {functionName} {nVars}\n"
-        assembly += "\n".join([
-            f"({functionName})",
-            "\n".join([ASM_FUNCTION_PUSH_CONST for _ in range(nVars)])
-        ])
+        assembly += f"({functionName})"
+
+        if nVars > 0:
+            assembly += "\n" + "\n".join([ASM_FUNCTION_PUSH_CONST for _ in range(nVars)])
+
+        assembly += "\n"
 
         self.__saveInstruction(assembly)
     
@@ -278,6 +282,7 @@ class CodeWriter:
         for arg in args:
             LOAD_D = "D=A" if arg == function_return_label else "D=M"
             assembly += "\n".join([
+                f"// push {arg}",
                 f"@{arg}",
                 LOAD_D,
                 CodeWriter.__ASM_PUSH_UPDATE_SP
@@ -285,6 +290,7 @@ class CodeWriter:
             assembly += "\n"
         # move ARG to the first passed argument's position
         assembly += "\n".join([
+            "// ARG = RAM[SP] - 5 - nArgs",
             "@5",
             "D=A",
             f"@{nArgs}",
@@ -293,10 +299,12 @@ class CodeWriter:
             "D=M-D",
             "@ARG",
             "M=D",
+            "// LCL = SP",
             "@SP",
             "D=M",
             "@LCL",
             "M=D",
+            f"// goto {functionName}",
             f"@{functionName}",
             "0;JMP",
             f"({function_return_label})"
@@ -313,15 +321,18 @@ class CodeWriter:
         # pop argument 0
         assembly = "\n".join([
             "// return",
+            "// RAM[FRAME] = LCL",
             "@LCL",
             "D=M",
             frame_label,
             "M=D",
+            "// RETADDR = LCL - 5",
             "@5",
             "A=D-A",
             "D=M",
             return_label,
             "M=D",
+            "// pop argument 0", 
             "@ARG",
             "D=M",
             "@R13",
@@ -335,6 +346,7 @@ class CodeWriter:
 
         # SP = RAM[ARG] + 1
         assembly += "\n".join([
+            "// SP = ARG + 1",
             "@ARG",
             "D=M",
             "@SP",
@@ -346,6 +358,7 @@ class CodeWriter:
         args = ["THAT", "THIS", "ARG", "LCL"]
         for arg in args:
             assembly+="\n".join([
+                f"// {arg} = RAM[--FRAME]",
                 frame_label,
                 "AM=M-1",
                 "D=M",
@@ -356,6 +369,7 @@ class CodeWriter:
 
         # GOTO RAM[RETADDR]
         assembly += "\n".join([
+            "// goto RAM[RETADDR]",
             return_label,
             "A=M",
             "0;JMP"
